@@ -1,308 +1,545 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 
-type Language = "es" | "en";
+type Stat = {
+  label: string;
+  value: number;
+};
 
-const copy = {
-  es: {
-    nav: ["Database", "Meta Lab", "Build System", "Coach IA", "Academy"],
-    pro: "Pro",
-    ticker: [
-      "Parche 5.4 activo",
-      "Meta: 4-2-2-2 domina División 1",
-      "Capello en 40% de equipos top",
-      "Vieira / Hazard en 60%+ de plantillas",
-      "41,893 jugadores indexados",
-    ],
-    eyebrow: "The Tactic Lab Academy",
-    headline: "Deja de perder. Empieza a ganar.",
-    subhead:
-      "La única academia de eFootball con análisis biomecánico TTL, coach IA y herramientas tácticas reales.",
-    ctaPrimary: "¿Por qué pierdo?",
-    ctaSecondary: "Explorar jugadores",
-    problemsTitle: "Problemas frecuentes",
-    problems: [
-      "No puedo meter goles contra 5-3-2",
-      "Me ganan la espalda siempre",
-      "No sé qué manager usar",
-      "¿Vale la pena tirar esta caja?",
-    ],
-    solutionTitle: "Preview TTL AI",
-    solution:
-      "Analiza tu lobby, detecta tu patrón de derrota y propone una ruta de mejora para las próximas 3 partidas.",
-    modulesTitle: "Módulos de entrenamiento",
-    modules: [
-      ["¿Por qué pierdo?", "Diagnóstico de errores repetidos por fase, economía y toma de peleas."],
-      ["Build Planner TTL", "Rutas de composición con pivots, condiciones de entrada y timing."],
-      ["Coach IA", "Feedback accionable después de cada partida para corregir una cosa a la vez."],
-      ["Lab de cajas", "Simulador de decisiones para rollear, guardar, subir nivel o pivotar."],
-      ["Player DNA — Arquetipos TTL", "Perfil de estilo: greed, tempo, scouting, flexibilidad y gestión de tilt."],
-      ["Anti-meta", "Respuestas prácticas contra las composiciones más jugadas del patch."],
-    ],
-    tableTitle: "Jugadores en análisis",
-    playerHeaders: ["Jugador", "Rol", "Riesgo", "Plan"],
-    players: [
-      ["NOVA", "Flex", "Medio", "Tempo 2-1"],
-      ["KAI", "Duelist", "Alto", "Stabilize 3-2"],
-      ["MIRA", "Control", "Bajo", "Eco spike"],
-      ["AXEL", "Sentinel", "Medio", "Pivot late"],
-    ],
-    metaTitle: "Meta Tracker",
-    metaItems: ["Sentinel Flex sube 4.2%", "Burst reroll cae 2.1%", "Eco Lock domina mid game"],
-    plansTitle: "Planes",
-    plans: [
-      ["Starter", "Diagnóstico semanal y acceso a módulos base."],
-      ["Pro", "Coach IA, tracker completo y planes por sesión."],
+type TrainingKey =
+  | "Shooting"
+  | "Passing"
+  | "Dribbling"
+  | "Dexterity"
+  | "Lower Body Strength"
+  | "Aerial Strength"
+  | "Defending"
+  | "GK1"
+  | "GK2"
+  | "GK3";
+
+type TrainingPlan = Record<TrainingKey, number>;
+
+type PlayerModelMetric = {
+  label: string;
+  value: number;
+  level: "high" | "medium" | "low";
+};
+
+const maxTrainingPoints = 62;
+
+const player = {
+  name: "Vinícius Júnior",
+  overall: 96,
+  position: "LWF",
+  flag: "BR",
+  tier: "S",
+  archetype: "Explosivo diagonal",
+  archetypeFeel:
+    "Se siente como un extremo de primer paso violento: amenaza el intervalo lateral-central, gira corto y castiga cualquier defensa que tarde medio segundo en perfilarse.",
+  verdict:
+    "Úsalo abierto para fijar al lateral y atacar el half-space con doble toque o sprint corto. Rinde mejor con instrucciones que lo dejen recibir al pie, romper hacia dentro y finalizar antes del contacto físico.",
+  basics: [
+    ["Altura", "176 cm"],
+    ["Peso", "73 kg"],
+    ["Edad", "25"],
+    ["Pie hábil", "Derecho"],
+    ["Equipo", "Real Madrid"],
+    ["Tipo de carta", "Epic Highlight"],
+  ],
+};
+
+const statGroups: { title: string; stats: Stat[] }[] = [
+  {
+    title: "Attacking",
+    stats: [
+      { label: "Offensive Awareness", value: 88 },
+      { label: "Ball Control", value: 93 },
+      { label: "Dribbling", value: 96 },
+      { label: "Tight Possession", value: 92 },
+      { label: "Low Pass", value: 80 },
+      { label: "Lofted Pass", value: 77 },
+      { label: "Finishing", value: 86 },
+      { label: "Heading", value: 63 },
+      { label: "Place Kicking", value: 71 },
+      { label: "Curl", value: 84 },
     ],
   },
-  en: {
-    nav: ["Database", "Meta Lab", "Build System", "Coach IA", "Academy"],
-    pro: "Pro",
-    ticker: [
-      "Patch 5.4 active",
-      "Meta: 4-2-2-2 dominates Division 1",
-      "Capello in 40% of top teams",
-      "Vieira / Hazard in 60%+ of squads",
-      "41,893 indexed players",
-    ],
-    eyebrow: "The Tactic Lab Academy",
-    headline: "Stop losing. Start winning.",
-    subhead:
-      "The only eFootball academy with TTL biomechanical analysis, AI coach and real tactical tools.",
-    ctaPrimary: "Why am I losing?",
-    ctaSecondary: "Explore players",
-    problemsTitle: "Common problems",
-    problems: [
-      "I can't score against 5-3-2",
-      "They always beat me in behind",
-      "I don't know which manager to use",
-      "Is this box worth pulling?",
-    ],
-    solutionTitle: "TTL AI Preview",
-    solution:
-      "Analyzes your lobby, detects your loss pattern, and proposes an improvement route for your next 3 games.",
-    modulesTitle: "Training modules",
-    modules: [
-      ["Why am I losing?", "Diagnose repeated mistakes by phase, economy, and fight selection."],
-      ["Build Planner TTL", "Composition routes with pivots, entry conditions, and timing."],
-      ["AI Coach", "Actionable feedback after each match to fix one thing at a time."],
-      ["Box Lab", "Decision simulator for rolling, saving, leveling, or pivoting."],
-      ["Player DNA — TTL Archetypes", "Style profile: greed, tempo, scouting, flexibility, and tilt control."],
-      ["Anti-meta", "Practical answers against the patch's most played compositions."],
-    ],
-    tableTitle: "Players in analysis",
-    playerHeaders: ["Player", "Role", "Risk", "Plan"],
-    players: [
-      ["NOVA", "Flex", "Medium", "Tempo 2-1"],
-      ["KAI", "Duelist", "High", "Stabilize 3-2"],
-      ["MIRA", "Control", "Low", "Eco spike"],
-      ["AXEL", "Sentinel", "Medium", "Late pivot"],
-    ],
-    metaTitle: "Meta Tracker",
-    metaItems: ["Sentinel Flex up 4.2%", "Burst reroll down 2.1%", "Eco Lock owns mid game"],
-    plansTitle: "Plans",
-    plans: [
-      ["Starter", "Weekly diagnosis and base module access."],
-      ["Pro", "AI Coach, full tracker, and session plans."],
+  {
+    title: "Defending",
+    stats: [
+      { label: "Defensive Awareness", value: 48 },
+      { label: "Defensive Engagement", value: 55 },
+      { label: "Tackling", value: 52 },
+      { label: "Aggression", value: 64 },
+      { label: "GK Awareness", value: 40 },
+      { label: "GK Catching", value: 40 },
+      { label: "GK Parrying", value: 40 },
+      { label: "GK Reflexes", value: 40 },
+      { label: "GK Reach", value: 40 },
     ],
   },
-} satisfies Record<Language, Record<string, string | string[] | string[][]>>;
-
-const moduleGradients = [
-  "from-[#00F0B5]/20 to-cyan-500/5",
-  "from-emerald-300/15 to-sky-400/10",
-  "from-[#00F0B5]/15 to-fuchsia-400/10",
-  "from-cyan-300/15 to-[#00F0B5]/5",
-  "from-white/10 to-[#00F0B5]/10",
-  "from-rose-300/10 to-[#00F0B5]/10",
+  {
+    title: "Athleticism",
+    stats: [
+      { label: "Speed", value: 94 },
+      { label: "Acceleration", value: 97 },
+      { label: "Kicking Power", value: 82 },
+      { label: "Jump", value: 72 },
+      { label: "Physical", value: 68 },
+      { label: "Balance", value: 91 },
+      { label: "Stamina", value: 86 },
+    ],
+  },
 ];
 
-export default function Home() {
-  const [language, setLanguage] = useState<Language>("es");
-  const t = copy[language];
+const initialMediaPlan: TrainingPlan = {
+  Shooting: 8,
+  Passing: 5,
+  Dribbling: 10,
+  Dexterity: 12,
+  "Lower Body Strength": 10,
+  "Aerial Strength": 2,
+  Defending: 0,
+  GK1: 0,
+  GK2: 0,
+  GK3: 0,
+};
 
+const smartPlan: TrainingPlan = {
+  Shooting: 9,
+  Passing: 4,
+  Dribbling: 12,
+  Dexterity: 12,
+  "Lower Body Strength": 11,
+  "Aerial Strength": 1,
+  Defending: 0,
+  GK1: 0,
+  GK2: 0,
+  GK3: 0,
+};
+
+const ttlEngine = [
+  {
+    label: "Inercia de arranque",
+    value: 96,
+    feel: "Sale como si ya viniera acelerando; ideal para primer toque hacia dentro.",
+  },
+  {
+    label: "Radio de giro",
+    value: 94,
+    feel: "Giro muy corto, perfecto para doble toque y cambios de carril en área chica.",
+  },
+  {
+    label: "Longitud de zancada",
+    value: 82,
+    feel: "Zancada media-larga: gana metros rápido sin perder demasiado control.",
+  },
+  {
+    label: "Estabilidad en duelo",
+    value: 74,
+    feel: "Aguanta el primer choque, pero conviene evitar centrales fuertes de frente.",
+  },
+];
+
+const playerModel: PlayerModelMetric[] = [
+  { label: "Arm Length", value: 62, level: "medium" },
+  { label: "Shoulder Width", value: 58, level: "medium" },
+  { label: "Neck Length", value: 46, level: "low" },
+  { label: "Chest Measurement", value: 64, level: "medium" },
+  { label: "Neck Size", value: 48, level: "low" },
+  { label: "Shoulder Height", value: 70, level: "medium" },
+  { label: "Leg Length", value: 84, level: "high" },
+  { label: "Thigh Size", value: 72, level: "medium" },
+  { label: "Waist Size", value: 55, level: "low" },
+  { label: "Arm Size", value: 57, level: "medium" },
+  { label: "Calf Size", value: 76, level: "high" },
+];
+
+const physics = [
+  ["Leg Coverage Radius", "1.31 m"],
+  ["Arm Coverage Radius", "0.76 m"],
+  ["Jumping Height", "0.68 m"],
+  ["Torso Collision", "Medium-Low"],
+  ["Leg Length Based Height", "178 cm feel"],
+];
+
+const skills = {
+  Skills: [
+    "Double Touch",
+    "Flip Flap",
+    "Sole Control",
+    "Marseille Turn",
+    "Long-Range Curler",
+    "First-time Shot",
+    "Outside Curler",
+  ],
+  "Additional Skills": ["Through Passing", "One-touch Pass", "Super-sub", "Fighting Spirit"],
+  "COM Skills": ["Incisive Run", "Mazing Run", "Trickster"],
+};
+
+function statColor(value: number) {
+  if (value > 85) {
+    return "bg-[#00F0B5] text-[#05070A]";
+  }
+
+  if (value >= 70) {
+    return "bg-[#F7C948] text-[#05070A]";
+  }
+
+  return "bg-[#FF5A5F] text-white";
+}
+
+function levelColor(level: PlayerModelMetric["level"]) {
+  if (level === "high") {
+    return "border-[#00F0B5]/40 bg-[#00F0B5]/10 text-[#00F0B5]";
+  }
+
+  if (level === "medium") {
+    return "border-[#F7C948]/40 bg-[#F7C948]/10 text-[#F7C948]";
+  }
+
+  return "border-[#FF5A5F]/40 bg-[#FF5A5F]/10 text-[#FF8A8E]";
+}
+
+function SectionCard({
+  children,
+  className = "",
+}: Readonly<{
+  children: React.ReactNode;
+  className?: string;
+}>) {
+  return <section className={`rounded-lg border border-white/10 bg-white/[0.04] ${className}`}>{children}</section>;
+}
+
+function SectionTitle({
+  title,
+  eyebrow,
+}: Readonly<{
+  title: string;
+  eyebrow?: string;
+}>) {
   return (
-    <main className="min-h-screen bg-[#05070A] text-white">
-      <div className="border-b border-white/10 bg-[#00F0B5] py-2 text-xs font-semibold text-[#05070A]">
-        <div className="mx-auto flex max-w-7xl gap-6 overflow-hidden px-4 sm:px-6 lg:px-8">
-          {[...t.ticker, ...t.ticker].map((item, index) => (
-            <span key={`${item}-${index}`} className="shrink-0">
-              {item}
-            </span>
-          ))}
+    <div className="border-b border-white/10 p-5">
+      {eyebrow ? <p className="text-xs font-black uppercase tracking-[0.2em] text-[#00F0B5]">{eyebrow}</p> : null}
+      <h2 className="mt-1 text-xl font-black text-white">{title}</h2>
+    </div>
+  );
+}
+
+function StatRow({ stat }: Readonly<{ stat: Stat }>) {
+  return (
+    <div className="grid grid-cols-[minmax(0,1fr)_48px] items-center gap-3">
+      <div>
+        <div className="mb-1 flex items-center justify-between gap-3">
+          <span className="truncate text-xs font-semibold text-white/[0.72]">{stat.label}</span>
+        </div>
+        <div className="h-2 overflow-hidden rounded-full bg-white/10">
+          <div className={`h-full rounded-full ${statColor(stat.value)}`} style={{ width: `${stat.value}%` }} />
         </div>
       </div>
+      <span className={`rounded px-2 py-1 text-center text-xs font-black ${statColor(stat.value)}`}>{stat.value}</span>
+    </div>
+  );
+}
 
-      <header className="sticky top-0 z-20 border-b border-white/10 bg-[#05070A]/85 backdrop-blur">
-        <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-4 sm:px-6 lg:px-8">
-          <a href="#" className="flex items-center gap-3" aria-label="TTLA home">
-            <span className="grid h-10 w-10 place-items-center rounded border border-[#00F0B5]/50 bg-[#00F0B5]/10 font-black text-[#00F0B5]">
-              T
-            </span>
-            <span className="text-lg font-black tracking-wide">The Tactic Lab Academy</span>
-          </a>
+function TrainingSlider({
+  label,
+  value,
+  onChange,
+  disabled = false,
+}: Readonly<{
+  label: TrainingKey;
+  value: number;
+  onChange?: (value: number) => void;
+  disabled?: boolean;
+}>) {
+  return (
+    <label className="grid gap-2">
+      <div className="flex items-center justify-between gap-4">
+        <span className="text-sm font-bold text-white/[0.78]">{label}</span>
+        <span className="rounded border border-white/10 bg-[#05070A] px-2 py-1 text-xs font-black text-[#00F0B5]">
+          {value}
+        </span>
+      </div>
+      <input
+        type="range"
+        min="0"
+        max="12"
+        value={value}
+        disabled={disabled}
+        onChange={(event) => onChange?.(Number(event.target.value))}
+        className="h-2 w-full cursor-pointer accent-[#00F0B5] disabled:cursor-not-allowed disabled:opacity-60"
+      />
+    </label>
+  );
+}
 
-          <nav className="hidden items-center gap-7 text-sm text-white/70 md:flex">
-            {t.nav.map((item) => (
-              <a key={item} href="#" className="transition hover:text-[#00F0B5]">
+function EngineMetric({
+  label,
+  value,
+  feel,
+}: Readonly<{
+  label: string;
+  value: number;
+  feel: string;
+}>) {
+  return (
+    <div className="rounded border border-white/[0.08] bg-[#05070A]/70 p-4">
+      <div className="mb-2 flex items-center justify-between gap-3">
+        <h3 className="text-sm font-black text-white">{label}</h3>
+        <span className="text-lg font-black text-[#00F0B5]">{value}</span>
+      </div>
+      <div className="mb-3 h-2 overflow-hidden rounded-full bg-white/10">
+        <div className="h-full rounded-full bg-[#00F0B5]" style={{ width: `${value}%` }} />
+      </div>
+      <p className="text-xs leading-5 text-white/[0.62]">{feel}</p>
+    </div>
+  );
+}
+
+export default function Home() {
+  const [activeTab, setActiveTab] = useState<"Media" | "Smart" | "TTL Pro">("Media");
+  const [mediaPlan, setMediaPlan] = useState<TrainingPlan>(initialMediaPlan);
+  const [managerLevel, setManagerLevel] = useState(88);
+
+  const usedPoints = useMemo(() => Object.values(mediaPlan).reduce((total, value) => total + value, 0), [mediaPlan]);
+  const remainingPoints = maxTrainingPoints - usedPoints;
+
+  const updateTraining = (key: TrainingKey, nextValue: number) => {
+    setMediaPlan((current) => {
+      const nextPlan = { ...current, [key]: nextValue };
+      const nextTotal = Object.values(nextPlan).reduce((total, value) => total + value, 0);
+
+      if (nextTotal > maxTrainingPoints) {
+        return current;
+      }
+
+      return nextPlan;
+    });
+  };
+
+  return (
+    <main className="min-h-screen bg-[#05070A] px-4 py-5 font-sans text-white sm:px-6 lg:px-8">
+      <div className="mx-auto grid max-w-7xl gap-5">
+        <header className="flex flex-col gap-4 rounded-lg border border-white/10 bg-white/[0.04] p-4 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <p className="text-xs font-black uppercase tracking-[0.24em] text-[#00F0B5]">The Tactic Lab Academy</p>
+            <h1 className="mt-1 text-2xl font-black sm:text-3xl">TTL Player Lab</h1>
+          </div>
+          <nav className="flex flex-wrap gap-2 text-xs font-bold text-white/[0.68]">
+            {["Database", "Meta Lab", "Build System", "Coach IA", "Academy"].map((item) => (
+              <a key={item} href="#" className="rounded border border-white/10 px-3 py-2 transition hover:border-[#00F0B5] hover:text-[#00F0B5]">
                 {item}
               </a>
             ))}
           </nav>
+        </header>
 
-          <div className="flex items-center gap-2">
-            <div className="flex rounded-full border border-white/10 bg-white/5 p-1 text-xs font-bold">
-              {(["es", "en"] as const).map((option) => (
-                <button
-                  key={option}
-                  type="button"
-                  onClick={() => setLanguage(option)}
-                  className={`rounded-full px-3 py-1.5 transition ${
-                    language === option ? "bg-[#00F0B5] text-[#05070A]" : "text-white/60 hover:text-white"
-                  }`}
-                >
-                  {option.toUpperCase()}
-                </button>
-              ))}
-            </div>
-            <button className="rounded-full bg-white px-4 py-2 text-sm font-black text-[#05070A] transition hover:bg-[#00F0B5]">
-              {t.pro}
-            </button>
-          </div>
-        </div>
-      </header>
-
-      <section className="mx-auto grid max-w-7xl gap-8 px-4 py-12 sm:px-6 sm:py-16 lg:grid-cols-[1.1fr_0.9fr] lg:px-8 lg:py-20">
-        <div className="flex flex-col justify-center">
-          <p className="mb-4 text-sm font-bold uppercase tracking-[0.24em] text-[#00F0B5]">{t.eyebrow}</p>
-          <h1 className="max-w-4xl text-5xl font-black leading-[0.95] sm:text-6xl lg:text-7xl">{t.headline}</h1>
-          <p className="mt-6 max-w-2xl text-base leading-7 text-white/[0.68] sm:text-lg">{t.subhead}</p>
-          <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-            <button className="rounded-lg bg-[#00F0B5] px-6 py-3 text-sm font-black text-[#05070A] shadow-[0_0_30px_rgba(0,240,181,0.28)] transition hover:bg-white">
-              {t.ctaPrimary}
-            </button>
-            <button className="rounded-lg border border-white/[0.14] px-6 py-3 text-sm font-bold text-white/80 transition hover:border-[#00F0B5]/70 hover:text-[#00F0B5]">
-              {t.ctaSecondary}
-            </button>
-          </div>
-        </div>
-
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2">
-          <article className="rounded-lg border border-white/10 bg-white/[0.04] p-5">
-            <h2 className="text-lg font-black">{t.problemsTitle}</h2>
-            <div className="mt-5 space-y-4">
-              {t.problems.map((problem, index) => (
-                <div key={problem} className="flex gap-3">
-                  <span className="mt-0.5 grid h-7 w-7 shrink-0 place-items-center rounded border border-red-300/20 bg-red-300/10 text-xs font-black text-red-200">
-                    {index + 1}
-                  </span>
-                  <p className="text-sm leading-6 text-white/70">{problem}</p>
-                </div>
-              ))}
-            </div>
-          </article>
-
-          <article className="rounded-lg border border-[#00F0B5]/25 bg-[#00F0B5]/10 p-5">
-            <div className="flex items-center justify-between gap-4">
-              <h2 className="text-lg font-black">{t.solutionTitle}</h2>
-              <span className="rounded-full bg-[#00F0B5] px-3 py-1 text-xs font-black text-[#05070A]">LIVE</span>
-            </div>
-            <div className="mt-5 rounded border border-white/10 bg-[#05070A]/70 p-4">
-              <div className="mb-4 h-2 rounded-full bg-white/10">
-                <div className="h-2 w-3/4 rounded-full bg-[#00F0B5]" />
-              </div>
-              <p className="text-sm leading-6 text-white/[0.76]">{t.solution}</p>
-            </div>
-          </article>
-        </div>
-      </section>
-
-      <section className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-        <div className="mb-6 flex items-end justify-between gap-4">
-          <h2 className="text-2xl font-black sm:text-3xl">{t.modulesTitle}</h2>
-          <div className="hidden h-px flex-1 bg-white/10 sm:block" />
-        </div>
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {t.modules.map(([title, description], index) => (
-            <article
-              key={title}
-              className={`rounded-lg border border-white/10 bg-gradient-to-br ${moduleGradients[index]} p-5 transition hover:-translate-y-1 hover:border-[#00F0B5]/50`}
-            >
-              <div className="mb-8 flex h-10 w-10 items-center justify-center rounded border border-white/10 bg-[#05070A]/60 text-sm font-black text-[#00F0B5]">
-                0{index + 1}
-              </div>
-              <h3 className="text-lg font-black">{title}</h3>
-              <p className="mt-3 text-sm leading-6 text-white/[0.64]">{description}</p>
-            </article>
-          ))}
-        </div>
-      </section>
-
-      <section className="mx-auto grid max-w-7xl gap-5 px-4 py-12 sm:px-6 lg:grid-cols-[minmax(0,1fr)_360px] lg:px-8 lg:py-16">
-        <article className="overflow-hidden rounded-lg border border-white/10 bg-white/[0.04]">
-          <div className="border-b border-white/10 p-5">
-            <h2 className="text-2xl font-black">{t.tableTitle}</h2>
-          </div>
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[620px] border-collapse text-left text-sm">
-              <thead className="bg-white/[0.03] text-xs uppercase tracking-[0.18em] text-white/[0.46]">
-                <tr>
-                  {t.playerHeaders.map((header) => (
-                    <th key={header} className="px-5 py-4 font-bold">
-                      {header}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {t.players.map((player) => (
-                  <tr key={player[0]} className="border-t border-white/8">
-                    {player.map((cell, index) => (
-                      <td key={cell} className="px-5 py-4 text-white/[0.74]">
-                        <span className={index === 0 ? "font-black text-white" : ""}>{cell}</span>
-                      </td>
-                    ))}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </article>
-
-        <aside className="grid gap-5">
-          <article className="rounded-lg border border-white/10 bg-white/[0.04] p-5">
-            <h2 className="text-xl font-black">{t.metaTitle}</h2>
-            <div className="mt-5 space-y-3">
-              {t.metaItems.map((item) => (
-                <div key={item} className="flex items-center justify-between gap-4 rounded border border-white/[0.08] bg-[#05070A]/60 px-4 py-3">
-                  <span className="text-sm text-white/[0.72]">{item}</span>
-                  <span className="h-2 w-2 rounded-full bg-[#00F0B5] shadow-[0_0_16px_rgba(0,240,181,0.9)]" />
-                </div>
-              ))}
-            </div>
-          </article>
-
-          <article className="rounded-lg border border-[#00F0B5]/25 bg-[#00F0B5]/10 p-5">
-            <h2 className="text-xl font-black">{t.plansTitle}</h2>
-            <div className="mt-5 space-y-4">
-              {t.plans.map(([name, description]) => (
-                <div key={name} className="rounded border border-white/10 bg-[#05070A]/70 p-4">
-                  <div className="flex items-center justify-between">
-                    <h3 className="font-black">{name}</h3>
-                    {name === "Pro" && (
-                      <span className="rounded-full bg-[#00F0B5] px-2.5 py-1 text-xs font-black text-[#05070A]">
-                        TTLA
-                      </span>
-                    )}
+        <section className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_360px]">
+          <div className="grid gap-5">
+            <SectionCard className="p-5">
+              <div className="grid gap-5 lg:grid-cols-[220px_minmax(0,1fr)]">
+                <div className="rounded-lg border border-[#00F0B5]/25 bg-[#00F0B5]/10 p-5">
+                  <div className="flex items-start justify-between gap-4">
+                    <div>
+                      <p className="text-xs font-black uppercase tracking-[0.18em] text-white/[0.58]">{player.position}</p>
+                      <p className="mt-1 text-6xl font-black leading-none text-[#00F0B5]">{player.overall}</p>
+                    </div>
+                    <span className="rounded border border-white/10 bg-[#05070A] px-3 py-2 text-sm font-black">{player.flag}</span>
                   </div>
-                  <p className="mt-2 text-sm leading-6 text-white/[0.64]">{description}</p>
+                  <div className="mt-6">
+                    <h2 className="text-3xl font-black leading-tight">{player.name}</h2>
+                    <div className="mt-3 inline-flex rounded-full bg-[#00F0B5] px-3 py-1 text-xs font-black text-[#05070A]">
+                      Tier TTL {player.tier}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="grid gap-4">
+                  <div className="rounded-lg border border-white/10 bg-[#05070A]/70 p-5">
+                    <p className="text-xs font-black uppercase tracking-[0.2em] text-[#00F0B5]">Arquetipo biomecánico TTL</p>
+                    <h3 className="mt-2 text-2xl font-black">{player.archetype}</h3>
+                    <p className="mt-3 text-sm leading-6 text-white/[0.68]">{player.archetypeFeel}</p>
+                  </div>
+
+                  <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+                    {player.basics.map(([label, value]) => (
+                      <div key={label} className="rounded border border-white/[0.08] bg-white/[0.03] p-3">
+                        <p className="text-xs font-bold uppercase tracking-[0.14em] text-white/[0.42]">{label}</p>
+                        <p className="mt-1 text-sm font-black text-white">{value}</p>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="rounded-lg border border-[#00F0B5]/25 bg-[#00F0B5]/10 p-5">
+                    <p className="text-xs font-black uppercase tracking-[0.2em] text-[#00F0B5]">Veredicto TTL</p>
+                    <p className="mt-2 text-sm leading-6 text-white/[0.76]">{player.verdict}</p>
+                  </div>
+                </div>
+              </div>
+            </SectionCard>
+
+            <section className="grid gap-5 xl:grid-cols-3">
+              {statGroups.map((group) => (
+                <SectionCard key={group.title}>
+                  <SectionTitle title={group.title} />
+                  <div className="grid gap-4 p-5">
+                    {group.stats.map((stat) => (
+                      <StatRow key={stat.label} stat={stat} />
+                    ))}
+                  </div>
+                </SectionCard>
+              ))}
+            </section>
+
+            <SectionCard>
+              <SectionTitle title="Plan de entrenamiento" eyebrow="Level 32 Max / 62 pts" />
+              <div className="p-5">
+                <div className="mb-5 grid grid-cols-3 rounded-lg border border-white/10 bg-[#05070A]/80 p-1">
+                  {(["Media", "Smart", "TTL Pro"] as const).map((tab) => (
+                    <button
+                      key={tab}
+                      type="button"
+                      onClick={() => setActiveTab(tab)}
+                      className={`rounded px-3 py-2 text-xs font-black transition sm:text-sm ${
+                        activeTab === tab ? "bg-[#00F0B5] text-[#05070A]" : "text-white/[0.64] hover:text-white"
+                      }`}
+                    >
+                      {tab === "TTL Pro" ? "TTL Pro 🔒" : tab}
+                    </button>
+                  ))}
+                </div>
+
+                {activeTab === "Media" ? (
+                  <div>
+                    <div className="mb-5 flex flex-col gap-2 rounded border border-white/[0.08] bg-white/[0.03] p-4 sm:flex-row sm:items-center sm:justify-between">
+                      <p className="text-sm font-bold text-white/[0.72]">Puntos usados vs disponibles</p>
+                      <p className={`text-lg font-black ${remainingPoints < 0 ? "text-[#FF5A5F]" : "text-[#00F0B5]"}`}>
+                        {usedPoints}/{maxTrainingPoints} usados · {remainingPoints} libres
+                      </p>
+                    </div>
+                    <div className="grid gap-5 md:grid-cols-2">
+                      {(Object.keys(mediaPlan) as TrainingKey[]).map((key) => (
+                        <TrainingSlider key={key} label={key} value={mediaPlan[key]} onChange={(value) => updateTraining(key, value)} />
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
+
+                {activeTab === "Smart" ? (
+                  <div>
+                    <p className="mb-5 rounded border border-[#00F0B5]/20 bg-[#00F0B5]/10 p-4 text-sm leading-6 text-white/[0.74]">
+                      Distribución optimizada fija para LWF explosivo: prioriza aceleración, regate y amenaza diagonal sin gastar en defensa ni portería.
+                    </p>
+                    <div className="grid gap-5 md:grid-cols-2">
+                      {(Object.keys(smartPlan) as TrainingKey[]).map((key) => (
+                        <TrainingSlider key={key} label={key} value={smartPlan[key]} disabled />
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
+
+                {activeTab === "TTL Pro" ? (
+                  <div className="relative overflow-hidden rounded-lg border border-[#F7C948]/40 bg-[#F7C948]/10 p-8 text-center">
+                    <div className="absolute inset-0 bg-[#F7C948]/10 backdrop-blur-[1px]" />
+                    <div className="relative mx-auto max-w-xl">
+                      <p className="text-xs font-black uppercase tracking-[0.22em] text-[#F7C948]">TTL Pro bloqueado</p>
+                      <h3 className="mt-3 text-3xl font-black text-white">Desbloquea builds biomecánicas avanzadas</h3>
+                      <p className="mt-3 text-sm leading-6 text-white/[0.72]">O accede gratis con membresía del canal TTL</p>
+                      <button className="mt-6 rounded-lg bg-[#F7C948] px-6 py-3 text-sm font-black text-[#05070A] transition hover:bg-white">
+                        Desbloquear con Pro
+                      </button>
+                    </div>
+                  </div>
+                ) : null}
+              </div>
+            </SectionCard>
+          </div>
+
+          <aside className="grid gap-5 self-start lg:sticky lg:top-5">
+            <SectionCard>
+              <SectionTitle title="Motor TTL" />
+              <div className="grid gap-3 p-5">
+                {ttlEngine.map((metric) => (
+                  <EngineMetric key={metric.label} {...metric} />
+                ))}
+              </div>
+            </SectionCard>
+
+            <SectionCard>
+              <SectionTitle title="Manager" />
+              <div className="p-5">
+                <div className="mb-3 flex items-center justify-between gap-4">
+                  <span className="text-sm font-bold text-white/[0.72]">Nivel de manager</span>
+                  <span className="text-2xl font-black text-[#00F0B5]">{managerLevel}</span>
+                </div>
+                <input
+                  type="range"
+                  min="0"
+                  max="100"
+                  value={managerLevel}
+                  onChange={(event) => setManagerLevel(Number(event.target.value))}
+                  className="h-2 w-full cursor-pointer accent-[#00F0B5]"
+                />
+                <p className="mt-3 text-xs leading-5 text-white/[0.56]">
+                  Ajusta el nivel del manager para simular boosts de afinidad y estabilidad táctica.
+                </p>
+              </div>
+            </SectionCard>
+          </aside>
+        </section>
+
+        <section className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_380px]">
+          <SectionCard>
+            <SectionTitle title="Player Model" />
+            <div className="grid gap-3 p-5 sm:grid-cols-2 lg:grid-cols-3">
+              {playerModel.map((metric) => (
+                <div key={metric.label} className={`rounded border p-3 ${levelColor(metric.level)}`}>
+                  <div className="mb-2 flex items-center justify-between gap-3">
+                    <span className="text-xs font-black uppercase tracking-[0.12em]">{metric.label}</span>
+                    <span className="text-sm font-black">{metric.value}</span>
+                  </div>
+                  <div className="h-2 overflow-hidden rounded-full bg-white/10">
+                    <div className="h-full rounded-full bg-current" style={{ width: `${metric.value}%` }} />
+                  </div>
                 </div>
               ))}
             </div>
-          </article>
-        </aside>
-      </section>
+          </SectionCard>
+
+          <SectionCard>
+            <SectionTitle title="Physics calculada" />
+            <div className="grid gap-3 p-5">
+              {physics.map(([label, value]) => (
+                <div key={label} className="flex items-center justify-between gap-4 rounded border border-white/[0.08] bg-[#05070A]/70 px-4 py-3">
+                  <span className="text-sm text-white/[0.68]">{label}</span>
+                  <span className="text-sm font-black text-[#00F0B5]">{value}</span>
+                </div>
+              ))}
+            </div>
+          </SectionCard>
+        </section>
+
+        <SectionCard>
+          <SectionTitle title="Habilidades" />
+          <div className="grid gap-5 p-5 lg:grid-cols-3">
+            {Object.entries(skills).map(([group, items]) => (
+              <div key={group}>
+                <h3 className="mb-3 text-sm font-black uppercase tracking-[0.18em] text-[#00F0B5]">{group}</h3>
+                <div className="flex flex-wrap gap-2">
+                  {items.map((skill) => (
+                    <span key={skill} className="rounded border border-white/10 bg-[#05070A]/70 px-3 py-2 text-xs font-bold text-white/[0.78]">
+                      {skill}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        </SectionCard>
+      </div>
     </main>
   );
 }
