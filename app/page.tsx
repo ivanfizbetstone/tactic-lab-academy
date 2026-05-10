@@ -6,25 +6,27 @@ type Language = "es" | "en";
 
 const copy = {
   es: {
-    nav: ["Academia", "Módulos", "Meta", "Planes"],
+    nav: ["Database", "Meta Lab", "Build System", "Coach IA", "Academy"],
     pro: "Pro",
     ticker: [
-      "Patch 14.9",
-      "Meta: control + early tempo",
-      "Winrate promedio: 51.8%",
-      "Comps calientes: Sentinel Flex, Duelist Burst, Eco Lock",
+      "Parche 5.4 activo",
+      "Meta: 4-2-2-2 domina División 1",
+      "Capello en 40% de equipos top",
+      "Vieira / Hazard en 60%+ de plantillas",
+      "41,893 jugadores indexados",
     ],
     eyebrow: "The Tactic Lab Academy",
     headline: "Deja de perder. Empieza a ganar.",
     subhead:
-      "Entrena decisiones, builds y adaptación al meta con una academia táctica diseñada para jugadores que quieren subir con método.",
-    ctaPrimary: "Entrar al Lab",
-    ctaSecondary: "Ver diagnóstico",
+      "La única academia de eFootball con análisis biomecánico TTL, coach IA y herramientas tácticas reales.",
+    ctaPrimary: "¿Por qué pierdo?",
+    ctaSecondary: "Explorar jugadores",
     problemsTitle: "Problemas frecuentes",
     problems: [
-      "Copias builds sin entender el tempo.",
-      "Pierdes cajas por mala lectura de riesgo.",
-      "Cambias tarde cuando el lobby ya te castigó.",
+      "No puedo meter goles contra 5-3-2",
+      "Me ganan la espalda siempre",
+      "No sé qué manager usar",
+      "¿Vale la pena tirar esta caja?",
     ],
     solutionTitle: "Preview TTL AI",
     solution:
@@ -32,10 +34,10 @@ const copy = {
     modulesTitle: "Módulos de entrenamiento",
     modules: [
       ["¿Por qué pierdo?", "Diagnóstico de errores repetidos por fase, economía y toma de peleas."],
-      ["Build Planner", "Rutas de composición con pivots, condiciones de entrada y timing."],
+      ["Build Planner TTL", "Rutas de composición con pivots, condiciones de entrada y timing."],
       ["Coach IA", "Feedback accionable después de cada partida para corregir una cosa a la vez."],
       ["Lab de cajas", "Simulador de decisiones para rollear, guardar, subir nivel o pivotar."],
-      ["Player DNA", "Perfil de estilo: greed, tempo, scouting, flexibilidad y gestión de tilt."],
+      ["Player DNA — Arquetipos TTL", "Perfil de estilo: greed, tempo, scouting, flexibilidad y gestión de tilt."],
       ["Anti-meta", "Respuestas prácticas contra las composiciones más jugadas del patch."],
     ],
     tableTitle: "Jugadores en análisis",
@@ -55,25 +57,27 @@ const copy = {
     ],
   },
   en: {
-    nav: ["Academy", "Modules", "Meta", "Plans"],
+    nav: ["Database", "Meta Lab", "Build System", "Coach IA", "Academy"],
     pro: "Pro",
     ticker: [
-      "Patch 14.9",
-      "Meta: control + early tempo",
-      "Average winrate: 51.8%",
-      "Hot comps: Sentinel Flex, Duelist Burst, Eco Lock",
+      "Patch 5.4 active",
+      "Meta: 4-2-2-2 dominates Division 1",
+      "Capello in 40% of top teams",
+      "Vieira / Hazard in 60%+ of squads",
+      "41,893 indexed players",
     ],
     eyebrow: "The Tactic Lab Academy",
     headline: "Stop losing. Start winning.",
     subhead:
-      "Train decisions, builds, and meta adaptation with a tactical academy built for players who want to climb with a system.",
-    ctaPrimary: "Enter the Lab",
-    ctaSecondary: "View diagnosis",
+      "The only eFootball academy with TTL biomechanical analysis, AI coach and real tactical tools.",
+    ctaPrimary: "Why am I losing?",
+    ctaSecondary: "Explore players",
     problemsTitle: "Common problems",
     problems: [
-      "You copy builds without understanding tempo.",
-      "You lose rounds from weak risk reading.",
-      "You pivot too late after the lobby has punished you.",
+      "I can't score against 5-3-2",
+      "They always beat me in behind",
+      "I don't know which manager to use",
+      "Is this box worth pulling?",
     ],
     solutionTitle: "TTL AI Preview",
     solution:
@@ -81,10 +85,10 @@ const copy = {
     modulesTitle: "Training modules",
     modules: [
       ["Why am I losing?", "Diagnose repeated mistakes by phase, economy, and fight selection."],
-      ["Build Planner", "Composition routes with pivots, entry conditions, and timing."],
+      ["Build Planner TTL", "Composition routes with pivots, entry conditions, and timing."],
       ["AI Coach", "Actionable feedback after each match to fix one thing at a time."],
       ["Box Lab", "Decision simulator for rolling, saving, leveling, or pivoting."],
-      ["Player DNA", "Style profile: greed, tempo, scouting, flexibility, and tilt control."],
+      ["Player DNA — TTL Archetypes", "Style profile: greed, tempo, scouting, flexibility, and tilt control."],
       ["Anti-meta", "Practical answers against the patch's most played compositions."],
     ],
     tableTitle: "Players in analysis",
@@ -136,7 +140,7 @@ export default function Home() {
             <span className="grid h-10 w-10 place-items-center rounded border border-[#00F0B5]/50 bg-[#00F0B5]/10 font-black text-[#00F0B5]">
               T
             </span>
-            <span className="text-lg font-black tracking-wide">TTLA</span>
+            <span className="text-lg font-black tracking-wide">The Tactic Lab Academy</span>
           </a>
 
           <nav className="hidden items-center gap-7 text-sm text-white/70 md:flex">
