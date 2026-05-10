@@ -5,6 +5,7 @@ import { useMemo, useState } from "react";
 type Stat = {
   label: string;
   value: number;
+  boost?: number;
 };
 
 type TrainingKey =
@@ -20,76 +21,90 @@ type TrainingKey =
   | "GK3";
 
 type TrainingPlan = Record<TrainingKey, number>;
+type Level = "high" | "medium" | "low";
 
 type PlayerModelMetric = {
   label: string;
   value: number;
-  level: "high" | "medium" | "low";
+  level: Level;
 };
 
 const maxTrainingPoints = 62;
 
 const player = {
   name: "Vinícius Júnior",
+  subtitle: "Prolific Winger",
   overall: 96,
   position: "LWF",
   flag: "BR",
   tier: "S",
   archetype: "Explosivo diagonal",
   archetypeFeel:
-    "Se siente como un extremo de primer paso violento: amenaza el intervalo lateral-central, gira corto y castiga cualquier defensa que tarde medio segundo en perfilarse.",
+    "Primer paso muy agresivo, giro corto y salida diagonal natural. Se siente letal cuando recibe abierto y ataca el intervalo lateral-central.",
   verdict:
-    "Úsalo abierto para fijar al lateral y atacar el half-space con doble toque o sprint corto. Rinde mejor con instrucciones que lo dejen recibir al pie, romper hacia dentro y finalizar antes del contacto físico.",
+    "Úsalo abierto para fijar al lateral y atacar el half-space con doble toque o sprint corto. Evita duelos frontales largos contra centrales físicos.",
   basics: [
     ["Altura", "176 cm"],
     ["Peso", "73 kg"],
     ["Edad", "25"],
-    ["Pie hábil", "Derecho"],
+    ["Foot", "Derecha"],
     ["Equipo", "Real Madrid"],
-    ["Tipo de carta", "Epic Highlight"],
+    ["Carta", "Epic Highlight"],
   ],
 };
 
+const positionMap = [
+  { label: "EI", value: 96, active: true },
+  { label: "DC", value: 90, active: false },
+  { label: "ED", value: 93, active: true },
+  { label: "II", value: 94, active: true },
+  { label: "MP", value: 92, active: false },
+  { label: "ID", value: 91, active: false },
+  { label: "LI", value: 78, active: false },
+  { label: "MC", value: 81, active: false },
+  { label: "LD", value: 76, active: false },
+];
+
 const statGroups: { title: string; stats: Stat[] }[] = [
   {
-    title: "Attacking",
+    title: "AGRESOR",
     stats: [
-      { label: "Offensive Awareness", value: 88 },
-      { label: "Ball Control", value: 93 },
-      { label: "Dribbling", value: 96 },
-      { label: "Tight Possession", value: 92 },
-      { label: "Low Pass", value: 80 },
-      { label: "Lofted Pass", value: 77 },
-      { label: "Finishing", value: 86 },
-      { label: "Heading", value: 63 },
-      { label: "Place Kicking", value: 71 },
-      { label: "Curl", value: 84 },
+      { label: "Actitud ofensiva", value: 88, boost: 2 },
+      { label: "Control de balón", value: 93, boost: 3 },
+      { label: "Regate", value: 96 },
+      { label: "Conservación del balón", value: 92 },
+      { label: "Pase raso", value: 80, boost: 1 },
+      { label: "Pase bombeado", value: 77 },
+      { label: "Finalización", value: 86 },
+      { label: "Cabeceo", value: 63 },
+      { label: "Balón parado", value: 71 },
+      { label: "Efecto", value: 84 },
     ],
   },
   {
-    title: "Defending",
+    title: "DEFENSA",
     stats: [
-      { label: "Defensive Awareness", value: 48 },
-      { label: "Defensive Engagement", value: 55 },
-      { label: "Tackling", value: 52 },
-      { label: "Aggression", value: 64 },
-      { label: "GK Awareness", value: 40 },
-      { label: "GK Catching", value: 40 },
-      { label: "GK Parrying", value: 40 },
-      { label: "GK Reflexes", value: 40 },
-      { label: "GK Reach", value: 40 },
+      { label: "Actitud defensiva", value: 48 },
+      { label: "Compromiso defensivo", value: 55 },
+      { label: "Entrada", value: 52 },
+      { label: "Agresividad", value: 64 },
+      { label: "Portero", value: 40 },
+      { label: "Atajar (PT)", value: 40 },
+      { label: "Desviar (PT)", value: 40 },
+      { label: "Reflejos (PT)", value: 40 },
+      { label: "Cobertura (PT)", value: 40 },
     ],
   },
   {
-    title: "Athleticism",
+    title: "ATLETISMO",
     stats: [
-      { label: "Speed", value: 94 },
-      { label: "Acceleration", value: 97 },
-      { label: "Kicking Power", value: 82 },
-      { label: "Jump", value: 72 },
-      { label: "Physical", value: 68 },
-      { label: "Balance", value: 91 },
-      { label: "Stamina", value: 86 },
+      { label: "Velocidad", value: 94, boost: 1 },
+      { label: "Aceleración", value: 97, boost: 2 },
+      { label: "Potencia de tiro", value: 82 },
+      { label: "Salto", value: 72 },
+      { label: "Físico", value: 68 },
+      { label: "Equilibrio", value: 91, boost: 1 },
+      { label: "Resistencia", value: 86 },
     ],
   },
 ];
@@ -121,27 +136,11 @@ const smartPlan: TrainingPlan = {
 };
 
 const ttlEngine = [
-  {
-    label: "Inercia de arranque",
-    value: 96,
-    feel: "Sale como si ya viniera acelerando; ideal para primer toque hacia dentro.",
-  },
-  {
-    label: "Radio de giro",
-    value: 94,
-    feel: "Giro muy corto, perfecto para doble toque y cambios de carril en área chica.",
-  },
-  {
-    label: "Longitud de zancada",
-    value: 82,
-    feel: "Zancada media-larga: gana metros rápido sin perder demasiado control.",
-  },
-  {
-    label: "Estabilidad en duelo",
-    value: 74,
-    feel: "Aguanta el primer choque, pero conviene evitar centrales fuertes de frente.",
-  },
-];
+  ["Inercia de arranque", 96, "Sale como si ya viniera acelerando."],
+  ["Radio de giro", 94, "Recorta sin abrir demasiado la carrera."],
+  ["Longitud de zancada", 82, "Gana metros rápido, pero conserva control."],
+  ["Estabilidad en duelo", 74, "Aguanta contacto lateral, sufre choque frontal."],
+] as const;
 
 const playerModel: PlayerModelMetric[] = [
   { label: "Arm Length", value: 62, level: "medium" },
@@ -158,15 +157,15 @@ const playerModel: PlayerModelMetric[] = [
 ];
 
 const physics = [
-  ["Leg Coverage Radius", "1.31 m"],
-  ["Arm Coverage Radius", "0.76 m"],
-  ["Jumping Height", "0.68 m"],
-  ["Torso Collision", "Medium-Low"],
-  ["Leg Length Based Height", "178 cm feel"],
+  ["Leg Coverage Radius", "170.9"],
+  ["Arm Coverage Radius", "157.6"],
+  ["Jumping Height", "251.3"],
+  ["Torso Collision", "48.7"],
+  ["Leg Length Based Height", "178"],
 ];
 
 const skills = {
-  Skills: [
+  Habilidades: [
     "Double Touch",
     "Flip Flap",
     "Sole Control",
@@ -175,71 +174,57 @@ const skills = {
     "First-time Shot",
     "Outside Curler",
   ],
-  "Additional Skills": ["Through Passing", "One-touch Pass", "Super-sub", "Fighting Spirit"],
-  "COM Skills": ["Incisive Run", "Mazing Run", "Trickster"],
+  "Habilidades adicionales": ["Through Passing", "One-touch Pass", "Super-sub", "Fighting Spirit"],
+  "Habilidades COM": ["Incisive Run", "Mazing Run", "Trickster"],
 };
 
-function statColor(value: number) {
-  if (value > 85) {
-    return "bg-[#00F0B5] text-[#05070A]";
-  }
+const otherStats = [
+  ["Uso de pie malo", "Casi nunca"],
+  ["Precisión pie malo", "Medio"],
+  ["Regularidad", "Constante"],
+  ["Resist. a lesiones", "Medio"],
+];
 
-  if (value >= 70) {
-    return "bg-[#F7C948] text-[#05070A]";
-  }
-
-  return "bg-[#FF5A5F] text-white";
+function valueTone(value: number) {
+  if (value > 85) return "bg-[#00F0B5] text-[#05070A]";
+  if (value >= 70) return "bg-[#F7C948] text-[#05070A]";
+  return "bg-[#FF4D5E] text-white";
 }
 
-function levelColor(level: PlayerModelMetric["level"]) {
-  if (level === "high") {
-    return "border-[#00F0B5]/40 bg-[#00F0B5]/10 text-[#00F0B5]";
-  }
-
-  if (level === "medium") {
-    return "border-[#F7C948]/40 bg-[#F7C948]/10 text-[#F7C948]";
-  }
-
-  return "border-[#FF5A5F]/40 bg-[#FF5A5F]/10 text-[#FF8A8E]";
+function labelTone(value: number) {
+  if (value > 85) return "text-[#00F0B5]";
+  if (value >= 70) return "text-[#F7C948]";
+  return "text-[#FF6A76]";
 }
 
-function SectionCard({
+function levelTone(level: Level) {
+  if (level === "high") return "text-[#00F0B5]";
+  if (level === "medium") return "text-[#F7C948]";
+  return "text-[#FF6A76]";
+}
+
+function Panel({
   children,
   className = "",
 }: Readonly<{
   children: React.ReactNode;
   className?: string;
 }>) {
-  return <section className={`rounded-lg border border-white/10 bg-white/[0.04] ${className}`}>{children}</section>;
+  return <section className={`rounded-lg bg-[#11141D] ${className}`}>{children}</section>;
 }
 
-function SectionTitle({
-  title,
-  eyebrow,
-}: Readonly<{
-  title: string;
-  eyebrow?: string;
-}>) {
-  return (
-    <div className="border-b border-white/10 p-5">
-      {eyebrow ? <p className="text-xs font-black uppercase tracking-[0.2em] text-[#00F0B5]">{eyebrow}</p> : null}
-      <h2 className="mt-1 text-xl font-black text-white">{title}</h2>
-    </div>
-  );
+function PanelTitle({ children }: Readonly<{ children: React.ReactNode }>) {
+  return <h2 className="text-xs font-black uppercase tracking-[0.14em] text-slate-500">{children}</h2>;
 }
 
 function StatRow({ stat }: Readonly<{ stat: Stat }>) {
   return (
-    <div className="grid grid-cols-[minmax(0,1fr)_48px] items-center gap-3">
-      <div>
-        <div className="mb-1 flex items-center justify-between gap-3">
-          <span className="truncate text-xs font-semibold text-white/[0.72]">{stat.label}</span>
-        </div>
-        <div className="h-2 overflow-hidden rounded-full bg-white/10">
-          <div className={`h-full rounded-full ${statColor(stat.value)}`} style={{ width: `${stat.value}%` }} />
-        </div>
+    <div className="grid grid-cols-[minmax(0,1fr)_32px] items-center gap-2 rounded bg-[#171B25] px-2 py-1.5">
+      <div className="flex min-w-0 items-center gap-2">
+        {stat.boost ? <span className="rounded bg-[#1CFF33] px-1.5 text-[10px] font-black text-[#05070A]">+{stat.boost}</span> : null}
+        <span className={`truncate text-sm font-black ${labelTone(stat.value)}`}>{stat.label}</span>
       </div>
-      <span className={`rounded px-2 py-1 text-center text-xs font-black ${statColor(stat.value)}`}>{stat.value}</span>
+      <span className={`rounded px-1.5 py-1 text-center text-sm font-black ${valueTone(stat.value)}`}>{stat.value}</span>
     </div>
   );
 }
@@ -256,12 +241,10 @@ function TrainingSlider({
   disabled?: boolean;
 }>) {
   return (
-    <label className="grid gap-2">
-      <div className="flex items-center justify-between gap-4">
-        <span className="text-sm font-bold text-white/[0.78]">{label}</span>
-        <span className="rounded border border-white/10 bg-[#05070A] px-2 py-1 text-xs font-black text-[#00F0B5]">
-          {value}
-        </span>
+    <label className="grid gap-1.5">
+      <div className="flex items-center justify-between gap-3">
+        <span className="text-[11px] font-black uppercase tracking-[0.08em] text-slate-400">{label}</span>
+        <span className="text-sm font-black text-white">{value}</span>
       </div>
       <input
         type="range"
@@ -270,275 +253,326 @@ function TrainingSlider({
         value={value}
         disabled={disabled}
         onChange={(event) => onChange?.(Number(event.target.value))}
-        className="h-2 w-full cursor-pointer accent-[#00F0B5] disabled:cursor-not-allowed disabled:opacity-60"
+        className="h-2 w-full cursor-pointer accent-[#147CFF] disabled:cursor-not-allowed disabled:opacity-60"
       />
     </label>
   );
 }
 
-function EngineMetric({
-  label,
-  value,
-  feel,
-}: Readonly<{
-  label: string;
-  value: number;
-  feel: string;
-}>) {
+function PlayerCard() {
   return (
-    <div className="rounded border border-white/[0.08] bg-[#05070A]/70 p-4">
-      <div className="mb-2 flex items-center justify-between gap-3">
-        <h3 className="text-sm font-black text-white">{label}</h3>
-        <span className="text-lg font-black text-[#00F0B5]">{value}</span>
+    <div className="relative h-[254px] w-[180px] overflow-hidden rounded border-2 border-[#00F0B5] bg-[#141A2C] shadow-[0_0_34px_rgba(0,240,181,0.42)] sm:h-[310px] sm:w-[220px]">
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,rgba(0,240,181,0.35),transparent_28%),radial-gradient(circle_at_80%_0%,rgba(217,70,239,0.42),transparent_35%),linear-gradient(135deg,#0D1725,#20123D_45%,#111827)]" />
+      <div className="absolute inset-x-0 bottom-0 h-28 bg-gradient-to-t from-[#05070A] to-transparent" />
+      <div className="absolute left-3 top-3">
+        <p className="text-4xl font-black leading-none text-white sm:text-5xl">{player.overall}</p>
+        <p className="mt-1 text-base font-black text-white sm:text-lg">{player.position}</p>
       </div>
-      <div className="mb-3 h-2 overflow-hidden rounded-full bg-white/10">
-        <div className="h-full rounded-full bg-[#00F0B5]" style={{ width: `${value}%` }} />
+      <div className="absolute right-3 top-3 rounded bg-[#00F0B5] px-2 py-1 text-xs font-black text-[#05070A]">TTL {player.tier}</div>
+      <div className="absolute left-1/2 top-20 h-28 w-20 -translate-x-1/2 rounded-full bg-[#F43F5E]/80 blur-xl sm:top-24 sm:h-32 sm:w-24" />
+      <div className="absolute left-1/2 top-14 h-36 w-24 -translate-x-1/2 rounded-[45%] bg-gradient-to-b from-[#EA1D4D] to-[#1F4DFF] shadow-2xl sm:top-16 sm:h-44 sm:w-28" />
+      <div className="absolute left-10 top-20 h-16 w-4 rotate-12 rounded-full bg-[#9B5CF6] sm:left-12 sm:top-24 sm:h-20 sm:w-5" />
+      <div className="absolute right-10 top-20 h-16 w-4 -rotate-12 rounded-full bg-[#9B5CF6] sm:right-12 sm:top-24 sm:h-20 sm:w-5" />
+      <div className="absolute bottom-12 left-3 right-3 sm:bottom-14">
+        <h2 className="text-xl font-black leading-none text-white sm:text-2xl">{player.name}</h2>
+        <p className="mt-2 text-xs font-black uppercase tracking-[0.14em] text-[#00F0B5]">{player.subtitle}</p>
       </div>
-      <p className="text-xs leading-5 text-white/[0.62]">{feel}</p>
+      <div className="absolute bottom-3 left-3 right-3 flex items-center justify-between">
+        <span className="rounded bg-[#05070A]/80 px-2 py-1 text-xs font-black text-white">{player.flag}</span>
+        <span className="text-sm font-black text-[#00F0B5]">A</span>
+      </div>
     </div>
   );
 }
 
-export default function Home() {
+function PositionMap() {
+  return (
+    <Panel className="p-3">
+      <div className="grid grid-cols-3 gap-1.5 rounded-lg bg-[#0B0E15] p-2">
+        {positionMap.map((position) => (
+          <div
+            key={position.label}
+            className={`grid h-16 place-items-center rounded text-center ${
+              position.active ? "bg-emerald-600/90 text-white" : "bg-[#1A1F2B] text-slate-500"
+            }`}
+          >
+            <div>
+              <p className="text-[10px] font-black">{position.label}</p>
+              <p className="text-sm font-black">{position.value}</p>
+            </div>
+          </div>
+        ))}
+      </div>
+      <div className="mt-2 rounded bg-[#15294A] py-2 text-center text-xs font-black text-[#61A8FF]">{player.subtitle}</div>
+    </Panel>
+  );
+}
+
+export default function PlayerPage() {
   const [activeTab, setActiveTab] = useState<"Media" | "Smart" | "TTL Pro">("Media");
   const [mediaPlan, setMediaPlan] = useState<TrainingPlan>(initialMediaPlan);
-  const [managerLevel, setManagerLevel] = useState(88);
+  const [managerLevel, setManagerLevel] = useState(89);
 
   const usedPoints = useMemo(() => Object.values(mediaPlan).reduce((total, value) => total + value, 0), [mediaPlan]);
-  const remainingPoints = maxTrainingPoints - usedPoints;
 
   const updateTraining = (key: TrainingKey, nextValue: number) => {
     setMediaPlan((current) => {
       const nextPlan = { ...current, [key]: nextValue };
       const nextTotal = Object.values(nextPlan).reduce((total, value) => total + value, 0);
 
-      if (nextTotal > maxTrainingPoints) {
-        return current;
-      }
-
-      return nextPlan;
+      return nextTotal > maxTrainingPoints ? current : nextPlan;
     });
   };
 
   return (
-    <main className="min-h-screen bg-[#05070A] px-4 py-5 font-sans text-white sm:px-6 lg:px-8">
-      <div className="mx-auto grid max-w-7xl gap-5">
-        <header className="flex flex-col gap-4 rounded-lg border border-white/10 bg-white/[0.04] p-4 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <p className="text-xs font-black uppercase tracking-[0.24em] text-[#00F0B5]">The Tactic Lab Academy</p>
-            <h1 className="mt-1 text-2xl font-black sm:text-3xl">TTL Player Lab</h1>
+    <main className="min-h-screen bg-[#05070A] font-sans text-white">
+      <div className="border-b border-white/10 bg-[#0C0F17]">
+        <div className="mx-auto flex max-w-[1400px] flex-col gap-3 px-4 py-3 lg:px-6">
+          <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-end">
+            <div>
+              <h1 className="text-3xl font-black uppercase leading-none tracking-wide sm:text-4xl">{player.name}</h1>
+              <p className="mt-1 text-xs font-black uppercase tracking-[0.18em] text-[#00F0B5]">{player.subtitle}</p>
+            </div>
+            <div className="flex items-center gap-2 rounded border border-[#00F0B5]/30 bg-[#00F0B5]/10 px-3 py-2">
+              <span className="text-xs font-black uppercase text-[#00F0B5]">Tier TTL</span>
+              <span className="text-lg font-black text-white">{player.tier}</span>
+            </div>
           </div>
-          <nav className="flex flex-wrap gap-2 text-xs font-bold text-white/[0.68]">
-            {["Database", "Meta Lab", "Build System", "Coach IA", "Academy"].map((item) => (
-              <a key={item} href="#" className="rounded border border-white/10 px-3 py-2 transition hover:border-[#00F0B5] hover:text-[#00F0B5]">
+          <nav className="flex gap-5 overflow-x-auto text-xs font-black uppercase tracking-[0.12em] text-white/70">
+            {["Comparar", "Mis compilaciones", "Meta Lab", "Build System", "Coach IA", "Academy"].map((item) => (
+              <a key={item} href="#" className="shrink-0 py-1 transition hover:text-[#00F0B5]">
                 {item}
               </a>
             ))}
           </nav>
-        </header>
+        </div>
+      </div>
 
-        <section className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_360px]">
-          <div className="grid gap-5">
-            <SectionCard className="p-5">
-              <div className="grid gap-5 lg:grid-cols-[220px_minmax(0,1fr)]">
-                <div className="rounded-lg border border-[#00F0B5]/25 bg-[#00F0B5]/10 p-5">
-                  <div className="flex items-start justify-between gap-4">
-                    <div>
-                      <p className="text-xs font-black uppercase tracking-[0.18em] text-white/[0.58]">{player.position}</p>
-                      <p className="mt-1 text-6xl font-black leading-none text-[#00F0B5]">{player.overall}</p>
-                    </div>
-                    <span className="rounded border border-white/10 bg-[#05070A] px-3 py-2 text-sm font-black">{player.flag}</span>
+      <div className="mx-auto grid max-w-[1400px] gap-5 px-4 py-5 lg:grid-cols-[360px_minmax(0,1fr)] lg:px-6">
+        <aside className="grid gap-4 self-start">
+          <Panel className="p-4">
+            <div className="grid grid-cols-[44px_180px_64px] gap-3 sm:grid-cols-[52px_220px_76px]">
+              <div className="grid content-start gap-3">
+                {["🇧🇷", "RM", "TTL", "LWF"].map((item) => (
+                  <div key={item} className="grid h-12 place-items-center rounded-lg bg-[#171B25] text-sm font-black text-white">
+                    {item}
                   </div>
-                  <div className="mt-6">
-                    <h2 className="text-3xl font-black leading-tight">{player.name}</h2>
-                    <div className="mt-3 inline-flex rounded-full bg-[#00F0B5] px-3 py-1 text-xs font-black text-[#05070A]">
-                      Tier TTL {player.tier}
-                    </div>
+                ))}
+              </div>
+              <PlayerCard />
+              <div className="grid content-start gap-3">
+                {player.basics.slice(0, 5).map(([label, value]) => (
+                  <div key={label} className="rounded-lg bg-[#171B25] p-3 text-center">
+                    <p className="text-[10px] font-black text-slate-500">{label}</p>
+                    <p className="mt-1 text-sm font-black">{value}</p>
                   </div>
+                ))}
+              </div>
+            </div>
+            <div className="mt-3 grid grid-cols-[1fr_44px_44px_1fr] gap-2">
+              {["Prolific Winger", "TTL", "DNA", "Agility +1"].map((item) => (
+                <div key={item} className="rounded-lg bg-[#171B25] px-3 py-2 text-center text-xs font-black text-[#00F0B5]">
+                  {item}
                 </div>
+              ))}
+            </div>
+          </Panel>
 
-                <div className="grid gap-4">
-                  <div className="rounded-lg border border-white/10 bg-[#05070A]/70 p-5">
-                    <p className="text-xs font-black uppercase tracking-[0.2em] text-[#00F0B5]">Arquetipo biomecánico TTL</p>
-                    <h3 className="mt-2 text-2xl font-black">{player.archetype}</h3>
-                    <p className="mt-3 text-sm leading-6 text-white/[0.68]">{player.archetypeFeel}</p>
-                  </div>
+          <Panel className="p-4">
+            <div className="mb-4 flex items-center justify-between">
+              <div className="flex gap-2">
+                {(["Media", "Smart", "TTL Pro"] as const).map((tab) => (
+                  <button
+                    key={tab}
+                    type="button"
+                    onClick={() => setActiveTab(tab)}
+                    className={`rounded-full px-3 py-1.5 text-xs font-black uppercase ${
+                      activeTab === tab ? "bg-white text-[#05070A]" : "bg-[#171B25] text-[#00F0B5]"
+                    }`}
+                  >
+                    {tab}
+                  </button>
+                ))}
+              </div>
+            </div>
 
-                  <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-                    {player.basics.map(([label, value]) => (
-                      <div key={label} className="rounded border border-white/[0.08] bg-white/[0.03] p-3">
-                        <p className="text-xs font-bold uppercase tracking-[0.14em] text-white/[0.42]">{label}</p>
-                        <p className="mt-1 text-sm font-black text-white">{value}</p>
-                      </div>
-                    ))}
-                  </div>
+            <div className="mb-4 flex items-center justify-between text-xs">
+              <span className="font-bold text-slate-500">Nivel máximo</span>
+              <span className="rounded bg-[#171B25] px-3 py-1 font-black">32</span>
+              <span className="font-bold text-slate-500">Puntos</span>
+              <span className="font-black text-[#B4FF00]">
+                {usedPoints} / {maxTrainingPoints}
+              </span>
+            </div>
 
-                  <div className="rounded-lg border border-[#00F0B5]/25 bg-[#00F0B5]/10 p-5">
-                    <p className="text-xs font-black uppercase tracking-[0.2em] text-[#00F0B5]">Veredicto TTL</p>
-                    <p className="mt-2 text-sm leading-6 text-white/[0.76]">{player.verdict}</p>
-                  </div>
+            {activeTab === "TTL Pro" ? (
+              <div className="relative overflow-hidden rounded-lg border border-[#F7C948]/40 bg-[#F7C948]/10 p-5 text-center">
+                <div className="absolute inset-0 bg-[#F7C948]/10 backdrop-blur-[1px]" />
+                <div className="relative">
+                  <p className="text-xs font-black uppercase tracking-[0.18em] text-[#F7C948]">TTL Pro bloqueado</p>
+                  <h3 className="mt-2 text-lg font-black">Build biomecánica avanzada</h3>
+                  <p className="mt-2 text-xs leading-5 text-white/70">O accede gratis con membresía del canal TTL</p>
+                  <button className="mt-4 rounded bg-[#F7C948] px-4 py-2 text-xs font-black text-[#05070A]">Desbloquear con Pro</button>
                 </div>
               </div>
-            </SectionCard>
+            ) : (
+              <div className="grid gap-3">
+                {(Object.keys(activeTab === "Media" ? mediaPlan : smartPlan) as TrainingKey[]).map((key) => (
+                  <TrainingSlider
+                    key={key}
+                    label={key}
+                    value={activeTab === "Media" ? mediaPlan[key] : smartPlan[key]}
+                    disabled={activeTab === "Smart"}
+                    onChange={(value) => updateTraining(key, value)}
+                  />
+                ))}
+              </div>
+            )}
+          </Panel>
 
-            <section className="grid gap-5 xl:grid-cols-3">
+          <Panel className="p-4">
+            <div className="mb-4 flex items-center justify-between">
+              <PanelTitle>Entrenador</PanelTitle>
+              <span className="text-xs font-black text-[#00F0B5]">LOCK</span>
+            </div>
+            <div className="mb-4 rounded-lg bg-[#171B25] px-4 py-4 text-sm font-bold text-slate-400">Seleccionar entrenador</div>
+            <div className="flex items-center gap-3">
+              <span className="text-xs font-black uppercase text-slate-500">Entrenador</span>
+              <input
+                type="range"
+                min="0"
+                max="100"
+                value={managerLevel}
+                onChange={(event) => setManagerLevel(Number(event.target.value))}
+                className="h-2 min-w-0 flex-1 cursor-pointer accent-[#147CFF]"
+              />
+              <span className="w-8 text-right text-lg font-black">{managerLevel}</span>
+            </div>
+          </Panel>
+
+          <Panel className="p-4">
+            <h2 className="text-lg font-black uppercase text-[#B4FF00]">{player.subtitle}</h2>
+            <div className="mt-3 flex gap-2">
+              {["LWF", "SS", "CF"].map((item) => (
+                <span key={item} className="rounded bg-[#00F0B5] px-2 py-1 text-xs font-black text-[#05070A]">
+                  {item}
+                </span>
+              ))}
+            </div>
+            <p className="mt-3 text-xs leading-5 text-slate-400">{player.verdict}</p>
+          </Panel>
+        </aside>
+
+        <div className="grid gap-5">
+          <section className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_420px]">
+            <Panel className="p-4">
+              <div className="grid gap-4 lg:grid-cols-[1fr_1fr]">
+                <div>
+                  <PanelTitle>Arquetipo biomecánico TTL</PanelTitle>
+                  <h2 className="mt-2 text-2xl font-black text-[#00F0B5]">{player.archetype}</h2>
+                  <p className="mt-3 text-sm leading-6 text-slate-300">{player.archetypeFeel}</p>
+                </div>
+                <div className="grid gap-2 sm:grid-cols-2">
+                  {ttlEngine.map(([label, value, feel]) => (
+                    <div key={label} className="rounded bg-[#171B25] p-3">
+                      <div className="mb-2 flex items-center justify-between">
+                        <span className="text-xs font-black text-slate-400">{label}</span>
+                        <span className="text-base font-black text-[#00F0B5]">{value}</span>
+                      </div>
+                      <div className="mb-2 h-2 overflow-hidden rounded bg-[#0B0E15]">
+                        <div className="h-full rounded bg-[#00F0B5]" style={{ width: `${value}%` }} />
+                      </div>
+                      <p className="text-[11px] leading-4 text-slate-500">{feel}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </Panel>
+
+            <PositionMap />
+          </section>
+
+          <Panel className="p-4">
+            <div className="grid gap-5 xl:grid-cols-3">
               {statGroups.map((group) => (
-                <SectionCard key={group.title}>
-                  <SectionTitle title={group.title} />
-                  <div className="grid gap-4 p-5">
+                <div key={group.title}>
+                  <PanelTitle>{group.title}</PanelTitle>
+                  <div className="mt-3 grid gap-1.5">
                     {group.stats.map((stat) => (
                       <StatRow key={stat.label} stat={stat} />
                     ))}
                   </div>
-                </SectionCard>
-              ))}
-            </section>
-
-            <SectionCard>
-              <SectionTitle title="Plan de entrenamiento" eyebrow="Level 32 Max / 62 pts" />
-              <div className="p-5">
-                <div className="mb-5 grid grid-cols-3 rounded-lg border border-white/10 bg-[#05070A]/80 p-1">
-                  {(["Media", "Smart", "TTL Pro"] as const).map((tab) => (
-                    <button
-                      key={tab}
-                      type="button"
-                      onClick={() => setActiveTab(tab)}
-                      className={`rounded px-3 py-2 text-xs font-black transition sm:text-sm ${
-                        activeTab === tab ? "bg-[#00F0B5] text-[#05070A]" : "text-white/[0.64] hover:text-white"
-                      }`}
-                    >
-                      {tab === "TTL Pro" ? "TTL Pro 🔒" : tab}
-                    </button>
-                  ))}
                 </div>
+              ))}
+            </div>
+          </Panel>
 
-                {activeTab === "Media" ? (
-                  <div>
-                    <div className="mb-5 flex flex-col gap-2 rounded border border-white/[0.08] bg-white/[0.03] p-4 sm:flex-row sm:items-center sm:justify-between">
-                      <p className="text-sm font-bold text-white/[0.72]">Puntos usados vs disponibles</p>
-                      <p className={`text-lg font-black ${remainingPoints < 0 ? "text-[#FF5A5F]" : "text-[#00F0B5]"}`}>
-                        {usedPoints}/{maxTrainingPoints} usados · {remainingPoints} libres
-                      </p>
-                    </div>
-                    <div className="grid gap-5 md:grid-cols-2">
-                      {(Object.keys(mediaPlan) as TrainingKey[]).map((key) => (
-                        <TrainingSlider key={key} label={key} value={mediaPlan[key]} onChange={(value) => updateTraining(key, value)} />
-                      ))}
-                    </div>
+          <section className="grid gap-5 xl:grid-cols-3">
+            <Panel className="p-4">
+              <PanelTitle>Habilidades</PanelTitle>
+              <div className="mt-3 grid gap-1.5">
+                {skills.Habilidades.map((skill) => (
+                  <div key={skill} className="rounded bg-[#171B25] px-2 py-1.5 text-sm font-black">
+                    {skill}
                   </div>
-                ) : null}
-
-                {activeTab === "Smart" ? (
-                  <div>
-                    <p className="mb-5 rounded border border-[#00F0B5]/20 bg-[#00F0B5]/10 p-4 text-sm leading-6 text-white/[0.74]">
-                      Distribución optimizada fija para LWF explosivo: prioriza aceleración, regate y amenaza diagonal sin gastar en defensa ni portería.
-                    </p>
-                    <div className="grid gap-5 md:grid-cols-2">
-                      {(Object.keys(smartPlan) as TrainingKey[]).map((key) => (
-                        <TrainingSlider key={key} label={key} value={smartPlan[key]} disabled />
-                      ))}
-                    </div>
-                  </div>
-                ) : null}
-
-                {activeTab === "TTL Pro" ? (
-                  <div className="relative overflow-hidden rounded-lg border border-[#F7C948]/40 bg-[#F7C948]/10 p-8 text-center">
-                    <div className="absolute inset-0 bg-[#F7C948]/10 backdrop-blur-[1px]" />
-                    <div className="relative mx-auto max-w-xl">
-                      <p className="text-xs font-black uppercase tracking-[0.22em] text-[#F7C948]">TTL Pro bloqueado</p>
-                      <h3 className="mt-3 text-3xl font-black text-white">Desbloquea builds biomecánicas avanzadas</h3>
-                      <p className="mt-3 text-sm leading-6 text-white/[0.72]">O accede gratis con membresía del canal TTL</p>
-                      <button className="mt-6 rounded-lg bg-[#F7C948] px-6 py-3 text-sm font-black text-[#05070A] transition hover:bg-white">
-                        Desbloquear con Pro
-                      </button>
-                    </div>
-                  </div>
-                ) : null}
-              </div>
-            </SectionCard>
-          </div>
-
-          <aside className="grid gap-5 self-start lg:sticky lg:top-5">
-            <SectionCard>
-              <SectionTitle title="Motor TTL" />
-              <div className="grid gap-3 p-5">
-                {ttlEngine.map((metric) => (
-                  <EngineMetric key={metric.label} {...metric} />
                 ))}
               </div>
-            </SectionCard>
+              <PanelTitle>
+                <span className="mt-5 block">Habilidades adicionales</span>
+              </PanelTitle>
+              <div className="mt-3 rounded bg-[#171B25] px-2 py-2 text-sm font-bold text-slate-400">+ Add skill</div>
+              <PanelTitle>
+                <span className="mt-5 block">Habilidades COM</span>
+              </PanelTitle>
+              <div className="mt-3 rounded bg-[#171B25] px-2 py-1.5 text-sm font-black">{skills["Habilidades COM"][0]}</div>
+            </Panel>
 
-            <SectionCard>
-              <SectionTitle title="Manager" />
-              <div className="p-5">
-                <div className="mb-3 flex items-center justify-between gap-4">
-                  <span className="text-sm font-bold text-white/[0.72]">Nivel de manager</span>
-                  <span className="text-2xl font-black text-[#00F0B5]">{managerLevel}</span>
-                </div>
-                <input
-                  type="range"
-                  min="0"
-                  max="100"
-                  value={managerLevel}
-                  onChange={(event) => setManagerLevel(Number(event.target.value))}
-                  className="h-2 w-full cursor-pointer accent-[#00F0B5]"
-                />
-                <p className="mt-3 text-xs leading-5 text-white/[0.56]">
-                  Ajusta el nivel del manager para simular boosts de afinidad y estabilidad táctica.
-                </p>
-              </div>
-            </SectionCard>
-          </aside>
-        </section>
-
-        <section className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_380px]">
-          <SectionCard>
-            <SectionTitle title="Player Model" />
-            <div className="grid gap-3 p-5 sm:grid-cols-2 lg:grid-cols-3">
-              {playerModel.map((metric) => (
-                <div key={metric.label} className={`rounded border p-3 ${levelColor(metric.level)}`}>
-                  <div className="mb-2 flex items-center justify-between gap-3">
-                    <span className="text-xs font-black uppercase tracking-[0.12em]">{metric.label}</span>
-                    <span className="text-sm font-black">{metric.value}</span>
-                  </div>
-                  <div className="h-2 overflow-hidden rounded-full bg-white/10">
-                    <div className="h-full rounded-full bg-current" style={{ width: `${metric.value}%` }} />
-                  </div>
-                </div>
-              ))}
-            </div>
-          </SectionCard>
-
-          <SectionCard>
-            <SectionTitle title="Physics calculada" />
-            <div className="grid gap-3 p-5">
-              {physics.map(([label, value]) => (
-                <div key={label} className="flex items-center justify-between gap-4 rounded border border-white/[0.08] bg-[#05070A]/70 px-4 py-3">
-                  <span className="text-sm text-white/[0.68]">{label}</span>
-                  <span className="text-sm font-black text-[#00F0B5]">{value}</span>
-                </div>
-              ))}
-            </div>
-          </SectionCard>
-        </section>
-
-        <SectionCard>
-          <SectionTitle title="Habilidades" />
-          <div className="grid gap-5 p-5 lg:grid-cols-3">
-            {Object.entries(skills).map(([group, items]) => (
-              <div key={group}>
-                <h3 className="mb-3 text-sm font-black uppercase tracking-[0.18em] text-[#00F0B5]">{group}</h3>
-                <div className="flex flex-wrap gap-2">
-                  {items.map((skill) => (
-                    <span key={skill} className="rounded border border-white/10 bg-[#05070A]/70 px-3 py-2 text-xs font-bold text-white/[0.78]">
-                      {skill}
+            <Panel className="p-4">
+              <PanelTitle>Modelo de jugador</PanelTitle>
+              <div className="mt-3 grid gap-1.5">
+                {playerModel.map((metric) => (
+                  <div key={metric.label} className="grid grid-cols-[minmax(0,1fr)_32px] items-center gap-2 rounded bg-[#171B25] px-2 py-1.5">
+                    <span className={`truncate text-sm font-black ${levelTone(metric.level)}`}>{metric.label}</span>
+                    <span className={`rounded px-1.5 py-1 text-center text-sm font-black ${valueTone(metric.value * 10)}`}>
+                      {Math.round(metric.value / 10)}
                     </span>
-                  ))}
-                </div>
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
-        </SectionCard>
+              <PanelTitle>
+                <span className="mt-5 block">Otras stats</span>
+              </PanelTitle>
+              <div className="mt-3 grid gap-1.5">
+                {otherStats.map(([label, value]) => (
+                  <div key={label} className="flex items-center justify-between rounded bg-[#171B25] px-2 py-1.5 text-sm">
+                    <span className="text-slate-400">{label}</span>
+                    <span className="font-black">{value}</span>
+                  </div>
+                ))}
+              </div>
+            </Panel>
+
+            <Panel className="p-4">
+              <PanelTitle>Física</PanelTitle>
+              <div className="mt-4 grid gap-4">
+                {physics.map(([label, value], index) => (
+                  <div key={label}>
+                    <div className="mb-2 flex items-center justify-between gap-3">
+                      <span className="text-xs font-black uppercase tracking-[0.1em] text-slate-500">{label}</span>
+                      <span className="text-lg font-black">{value}</span>
+                    </div>
+                    <div className="h-2 overflow-hidden rounded bg-[#0B0E15]">
+                      <div
+                        className="h-full rounded bg-gradient-to-r from-[#8A1CFF] via-[#FF2FC3] to-[#FF7A1A]"
+                        style={{ width: `${58 + index * 8}%` }}
+                      />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </Panel>
+          </section>
+        </div>
       </div>
     </main>
   );
